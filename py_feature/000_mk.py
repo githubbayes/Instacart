@@ -15,6 +15,7 @@ utils.start(__file__)
 # test user
 #==============================================================================
 orders = pd.read_csv('../input/orders.csv.gz')
+## order_id;user_id;eval_set;order_number;order_dow;order_hour_of_day;days_since_prior
 
 test_user = orders.loc[orders.eval_set=='test'].reset_index(drop=1)
 test_user[['order_id', 'user_id']].to_pickle('../input/mk/test_user.p')
@@ -24,6 +25,8 @@ test_user[['order_id', 'user_id']].to_pickle('../input/mk/test_user.p')
 # goods
 #==============================================================================
 products = pd.read_csv('../input/products.csv')
+##product_id;product_name;aisle_id;department_id
+
 products.product_name = products.product_name.str.replace(' ', '-')
 
 aisles = pd.read_csv('../input/aisles.csv', engine='c')
@@ -40,15 +43,18 @@ gc.collect()
 log = pd.concat([pd.read_csv('../input/order_products__prior.csv.gz'), 
                  pd.read_csv('../input/order_products__train.csv.gz')], 
                 ignore_index=1)
-
+## order_id;product_id;add_to_cart_order;reordered
 log.sort_values(['order_id', 'add_to_cart_order'], inplace=True)
 log.reset_index(drop=1, inplace=True)
 log = pd.merge(log, goods, on='product_id', how='left')
 log = pd.merge(log, orders, on='order_id', how='left')
+
+
 log['order_number_rev'] = log.groupby('user_id').order_number.transform(np.max) - log.order_number
 
 utils.to_pickles(log, '../input/mk/log', 20)
-
+## log fields{## order_id;user_id;eval_set;order_number;order_dow;order_hour_of_day;days_since_prior;order_number_rev;
+## ## order_id;product_id;add_to_cart_order;reordered}
 gc.collect()
 #==============================================================================
 # order_tbl
@@ -62,7 +68,7 @@ order_tbl = pd.merge(order_tbl, log[['order_id','order_number_rev']].drop_duplic
 order_tbl.order_number_rev = order_tbl.order_number_rev.fillna(-1).astype(int)
 #order_tbl['order_number_rev'] = order_tbl.groupby('user_id').order_number.transform(np.max) - order_tbl.order_number
 order_tbl['days_since_first_order'] = order_tbl.groupby('user_id').days_since_prior_order.cumsum()
-
+## order_id;user_id;eval_set;order_number;order_dow;order_hour_of_day;days_since_prior;order_number_rev;days_since_first_order
 def set_diff(items1, items2):
     if  isinstance(items1, float) or isinstance(items2, float):
         return items1
